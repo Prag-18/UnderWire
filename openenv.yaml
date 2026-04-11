@@ -1,0 +1,35 @@
+name: license-compliance-scanner
+version: "1.0.0"
+description: >
+  An AI agent environment simulating enterprise license compliance work.
+  The agent scans software repositories, classifies OSS licenses, detects
+  conflicts between dependencies, and produces compliance reports.
+
+author: OpenEnv Community
+tags:
+  - openenv
+  - legal
+  - compliance
+  - software-engineering
+  - real-world
+
+tasks:
+  - id: classify_licenses
+    name: "License Classification"
+    difficulty: easy
+    max_steps: 20
+    reward_range: [0.0, 1.0]
+
+  - id: detect_conflicts
+    name: "Dependency Conflict Detection"
+    difficulty: medium
+    max_steps: 30
+    reward_range: [0.0, 1.0]
+
+  - id: generate_compliance_report
+    name: "Compliance Report Generation"
+    difficulty: hard
+    max_steps: 50
+    reward_range: [0.0, 1.0]
+
+python_requires: ">=3.10"

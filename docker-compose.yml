@@ -1,0 +1,32 @@
+services:
+  db:
+    image: postgres:16
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: UnderWire_db
+      POSTGRES_USER: pragati
+      POSTGRES_PASSWORD: pragati123
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U pragati -d UnderWire_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  app:
+    build: .
+    restart: unless-stopped
+    ports:
+      - "7860:7860"
+    environment:
+      DATABASE_URL: postgresql://pragati:pragati123@db:5432/UnderWire_db
+      PORT: "7860"
+    depends_on:
+      db:
+        condition: service_healthy
+
+volumes:
+  postgres_data:
