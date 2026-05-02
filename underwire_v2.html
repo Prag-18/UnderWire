@@ -1,0 +1,516 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>UnderWire — License Compliance Scanner</title>
+<meta name="description" content="Paste any GitHub URL to scan its dependencies for OSS license conflicts in real time."/>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet"/>
+<style>
+  :root {
+    --bg:        #0d0f14;
+    --surface:   #13161e;
+    --surface2:  #1a1e2a;
+    --border:    #252a38;
+    --accent:    #6c63ff;
+    --accent2:   #a78bfa;
+    --green:     #22d3a0;
+    --yellow:    #fbbf24;
+    --orange:    #f97316;
+    --red:       #ef4444;
+    --crimson:   #dc2626;
+    --text:      #e8eaf0;
+    --muted:     #6b7280;
+    --radius:    12px;
+    --glow:      0 0 24px rgba(108,99,255,.25);
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:var(--bg);color:var(--text);font-family:'Inter',sans-serif;min-height:100vh;overflow-x:hidden}
+
+  /* ── Header ── */
+  header{
+    padding:28px 40px 24px;
+    border-bottom:1px solid var(--border);
+    display:flex;align-items:center;gap:16px;
+    background:linear-gradient(135deg,#0d0f14 60%,#14122a);
+  }
+  .logo-icon{
+    width:40px;height:40px;border-radius:10px;
+    background:linear-gradient(135deg,var(--accent),var(--accent2));
+    display:flex;align-items:center;justify-content:center;
+    font-size:20px;box-shadow:var(--glow);
+    flex-shrink:0;
+  }
+  header h1{font-size:1.4rem;font-weight:700;letter-spacing:-.02em}
+  header span{color:var(--muted);font-size:.85rem;margin-left:auto}
+
+  /* ── Scan bar ── */
+  .scan-bar{
+    padding:32px 40px;
+    background:linear-gradient(180deg,#13161e,#0d0f14);
+    border-bottom:1px solid var(--border);
+  }
+  .scan-bar label{display:block;font-size:.8rem;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;margin-bottom:10px}
+  .input-row{display:flex;gap:12px;align-items:stretch}
+  #gh-url{
+    flex:1;background:var(--surface2);border:1.5px solid var(--border);
+    border-radius:var(--radius);padding:14px 18px;
+    color:var(--text);font-family:'JetBrains Mono',monospace;font-size:.95rem;
+    outline:none;transition:border-color .2s,box-shadow .2s;
+  }
+  #gh-url:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(108,99,255,.2)}
+  #gh-url::placeholder{color:var(--muted)}
+  #scan-btn{
+    padding:14px 28px;border:none;border-radius:var(--radius);
+    background:linear-gradient(135deg,var(--accent),var(--accent2));
+    color:#fff;font-weight:600;font-size:.95rem;cursor:pointer;
+    display:flex;align-items:center;gap:8px;white-space:nowrap;
+    transition:opacity .2s,transform .1s,box-shadow .2s;
+    box-shadow:var(--glow);
+  }
+  #scan-btn:hover{opacity:.9;box-shadow:0 0 32px rgba(108,99,255,.4)}
+  #scan-btn:active{transform:scale(.97)}
+  #scan-btn:disabled{opacity:.5;cursor:not-allowed}
+  .btn-spinner{width:16px;height:16px;border:2px solid rgba(255,255,255,.3);border-top-color:#fff;border-radius:50%;animation:spin .7s linear infinite;display:none}
+  .btn-spinner.active{display:block}
+  @keyframes spin{to{transform:rotate(360deg)}}
+
+  /* ── Quick examples ── */
+  .examples{margin-top:12px;display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+  .examples span{font-size:.75rem;color:var(--muted)}
+  .example-chip{
+    font-size:.73rem;padding:4px 10px;border-radius:20px;
+    background:var(--surface2);border:1px solid var(--border);
+    color:var(--accent2);cursor:pointer;transition:background .15s,border-color .15s;
+    font-family:'JetBrains Mono',monospace;
+  }
+  .example-chip:hover{background:var(--surface);border-color:var(--accent)}
+
+  /* ── Main layout ── */
+  main{padding:32px 40px;display:grid;gap:24px}
+
+  /* ── Status banner ── */
+  #status-banner{
+    display:none;padding:14px 18px;border-radius:var(--radius);
+    border:1px solid var(--border);font-size:.88rem;
+    animation:fadeIn .3s ease;
+  }
+  #status-banner.info{background:#1a1e2a;border-color:var(--accent);color:var(--accent2)}
+  #status-banner.error{background:#1f1213;border-color:var(--red);color:#fca5a5}
+  #status-banner.success{background:#0d1f19;border-color:var(--green);color:var(--green)}
+  @keyframes fadeIn{from{opacity:0;transform:translateY(-4px)}to{opacity:1;transform:none}}
+
+  /* ── Summary card ── */
+  #summary-card{display:none;animation:fadeIn .4s ease}
+  .card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:22px 26px}
+  .card-title{font-size:.75rem;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;margin-bottom:14px}
+  .stat-row{display:flex;gap:24px;flex-wrap:wrap}
+  .stat{flex:1;min-width:100px}
+  .stat-val{font-size:2rem;font-weight:700;letter-spacing:-.03em}
+  .stat-label{font-size:.75rem;color:var(--muted);margin-top:2px}
+  .stat-val.green{color:var(--green)}
+  .stat-val.red{color:var(--red)}
+  .stat-val.yellow{color:var(--yellow)}
+  .stat-val.orange{color:var(--orange)}
+  .manifest-pill{
+    display:inline-flex;align-items:center;gap:6px;
+    padding:4px 12px;border-radius:20px;font-size:.75rem;font-weight:600;
+    background:var(--surface2);border:1px solid var(--border);
+    color:var(--accent2);margin-bottom:14px;
+  }
+
+  /* ── Two-column grid ── */
+  .two-col{display:grid;grid-template-columns:1fr 1fr;gap:24px}
+  @media(max-width:900px){.two-col{grid-template-columns:1fr}}
+
+  /* ── Findings table ── */
+  #findings-card{display:none;animation:fadeIn .5s ease .1s both}
+  .findings-filter{display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap}
+  .filter-btn{
+    padding:5px 14px;border-radius:20px;font-size:.75rem;font-weight:600;
+    border:1px solid var(--border);background:var(--surface2);color:var(--muted);
+    cursor:pointer;transition:all .15s;
+  }
+  .filter-btn.active,
+  .filter-btn:hover{background:var(--accent);color:#fff;border-color:var(--accent)}
+  .findings-list{display:flex;flex-direction:column;gap:8px;max-height:520px;overflow-y:auto;padding-right:4px}
+  .findings-list::-webkit-scrollbar{width:4px}
+  .findings-list::-webkit-scrollbar-track{background:transparent}
+  .findings-list::-webkit-scrollbar-thumb{background:var(--border);border-radius:4px}
+
+  .finding-row{
+    background:var(--surface2);border:1px solid var(--border);
+    border-radius:10px;padding:12px 16px;
+    display:flex;align-items:flex-start;gap:12px;
+    transition:border-color .2s;cursor:pointer;
+  }
+  .finding-row:hover{border-color:var(--accent)}
+  .finding-row.conflict{border-left:3px solid var(--red)}
+  .finding-row.clear{border-left:3px solid var(--green)}
+  .finding-row.unknown{border-left:3px solid var(--muted)}
+  .pkg-name{font-weight:600;font-size:.88rem;font-family:'JetBrains Mono',monospace}
+  .pkg-version{font-size:.75rem;color:var(--muted);margin-top:1px}
+  .pkg-license{font-size:.78rem;color:var(--accent2);margin-top:4px;font-family:'JetBrains Mono',monospace}
+  .finding-meta{flex:1;min-width:0}
+  .conflict-reason{font-size:.75rem;color:#fca5a5;margin-top:4px;line-height:1.4}
+  .remediation{font-size:.73rem;color:var(--yellow);margin-top:3px;line-height:1.4}
+
+  /* Severity badge */
+  .sev-badge{
+    padding:3px 9px;border-radius:6px;font-size:.68rem;font-weight:700;
+    text-transform:uppercase;letter-spacing:.05em;white-space:nowrap;flex-shrink:0;margin-top:2px;
+  }
+  .sev-critical{background:#3d0f0f;color:#fca5a5;border:1px solid #7f1d1d}
+  .sev-high{background:#3d1f0a;color:#fdba74;border:1px solid #7c2d12}
+  .sev-medium{background:#3d350a;color:#fde68a;border:1px solid #78350f}
+  .sev-low{background:#1a2e1a;color:#86efac;border:1px solid #166534}
+  .sev-none{background:#1a2a1a;color:var(--green);border:1px solid #14532d}
+  .sev-unknown{background:var(--surface);color:var(--muted);border:1px solid var(--border)}
+
+  /* ── Grader panel ── */
+  #grader-card{display:none;animation:fadeIn .5s ease .2s both}
+  .metric-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+  @media(max-width:600px){.metric-grid{grid-template-columns:repeat(2,1fr)}}
+  .metric{background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:14px}
+  .metric-val{font-size:1.5rem;font-weight:700;letter-spacing:-.02em;margin-bottom:4px}
+  .metric-name{font-size:.73rem;color:var(--muted);font-weight:500}
+  .score-ring{
+    width:80px;height:80px;border-radius:50%;
+    background:conic-gradient(var(--accent) calc(var(--pct)*1%),var(--surface2) 0);
+    display:flex;align-items:center;justify-content:center;
+    margin:0 auto 12px;position:relative;
+  }
+  .score-ring::before{
+    content:'';position:absolute;inset:8px;border-radius:50%;background:var(--surface);
+  }
+  .score-val{position:relative;z-index:1;font-size:1.1rem;font-weight:700;color:var(--text)}
+  .progress-bar-wrap{margin-top:10px}
+  .progress-label{display:flex;justify-content:space-between;font-size:.73rem;color:var(--muted);margin-bottom:4px}
+  .progress-bar{height:6px;background:var(--surface2);border-radius:3px;overflow:hidden}
+  .progress-fill{height:100%;border-radius:3px;transition:width 1s ease;background:linear-gradient(90deg,var(--accent),var(--accent2))}
+  .progress-fill.green{background:linear-gradient(90deg,var(--green),#34d399)}
+  .progress-fill.red{background:linear-gradient(90deg,var(--red),#f87171)}
+
+  /* ── Empty state ── */
+  .empty-state{
+    text-align:center;padding:64px 20px;color:var(--muted);
+  }
+  .empty-state .icon{font-size:3rem;margin-bottom:16px;opacity:.4}
+  .empty-state h2{font-size:1.1rem;font-weight:600;margin-bottom:8px;color:var(--text);opacity:.5}
+  .empty-state p{font-size:.85rem;line-height:1.6}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo-icon">⚖️</div>
+  <div>
+    <h1>UnderWire</h1>
+    <div style="font-size:.8rem;color:var(--muted);margin-top:2px">OSS License Compliance Scanner</div>
+  </div>
+  <span id="header-tag">Real Data · Real Scanning</span>
+</header>
+
+<div class="scan-bar">
+  <label for="gh-url">GitHub Repository URL</label>
+  <div class="input-row">
+    <input id="gh-url" type="url" placeholder="https://github.com/owner/repo"
+           autocomplete="off" spellcheck="false"/>
+    <button id="scan-btn" onclick="runScan()">
+      <span class="btn-spinner" id="spinner"></span>
+      <span id="btn-label">🔍 Scan</span>
+    </button>
+  </div>
+  <div class="examples">
+    <span>Try:</span>
+    <span class="example-chip" onclick="prefill('https://github.com/psf/requests')">psf/requests</span>
+    <span class="example-chip" onclick="prefill('https://github.com/tiangolo/fastapi')">tiangolo/fastapi</span>
+    <span class="example-chip" onclick="prefill('https://github.com/expressjs/express')">expressjs/express</span>
+    <span class="example-chip" onclick="prefill('https://github.com/axios/axios')">axios/axios</span>
+    <span class="example-chip" onclick="prefill('https://github.com/vercel/next.js')">vercel/next.js</span>
+  </div>
+</div>
+
+<main>
+  <div id="status-banner"></div>
+
+  <div id="summary-card" class="card">
+    <div class="card-title">Scan Summary</div>
+    <div id="manifest-pill" class="manifest-pill"></div>
+    <div class="stat-row" id="stat-row"></div>
+    <div id="summary-text" style="margin-top:14px;font-size:.85rem;color:var(--muted);line-height:1.6"></div>
+  </div>
+
+  <div class="two-col">
+    <div id="findings-card" class="card">
+      <div class="card-title">Dependency Findings</div>
+      <div class="findings-filter">
+        <button class="filter-btn active" id="filter-all" onclick="applyFilter('all')">All</button>
+        <button class="filter-btn" id="filter-conflict" onclick="applyFilter('conflict')">⚠ Conflicts</button>
+        <button class="filter-btn" id="filter-clear" onclick="applyFilter('clear')">✓ Clear</button>
+      </div>
+      <div class="findings-list" id="findings-list"></div>
+    </div>
+
+    <div id="grader-card" class="card">
+      <div class="card-title">Grader Breakdown</div>
+      <div style="text-align:center;margin-bottom:20px">
+        <div class="score-ring" id="score-ring" style="--pct:0">
+          <div class="score-val" id="score-val">—</div>
+        </div>
+        <div style="font-size:.8rem;color:var(--muted)">Overall Score</div>
+      </div>
+      <div class="metric-grid" id="metric-grid"></div>
+      <div id="progress-bars" style="margin-top:16px"></div>
+    </div>
+  </div>
+
+  <div class="empty-state" id="empty-state">
+    <div class="icon">🛡️</div>
+    <h2>No scan results yet</h2>
+    <p>Paste a GitHub repository URL above and hit Scan.<br/>
+    Works with npm (package.json) and Python (requirements.txt) repos.</p>
+  </div>
+</main>
+
+<script>
+const API_BASE = '';   // same origin
+
+function prefill(url) {
+  document.getElementById('gh-url').value = url;
+  document.getElementById('gh-url').focus();
+}
+
+function setStatus(msg, type='info') {
+  const el = document.getElementById('status-banner');
+  el.textContent = msg;
+  el.className = type;
+  el.style.display = 'block';
+}
+
+function clearStatus() {
+  const el = document.getElementById('status-banner');
+  el.style.display = 'none';
+}
+
+function sevClass(sev) {
+  const map = { critical:'sev-critical', high:'sev-high', medium:'sev-medium',
+                low:'sev-low', none:'sev-none' };
+  return map[sev] || 'sev-unknown';
+}
+
+function sevLabel(sev) {
+  if (!sev || sev === 'none') return '✓ Clear';
+  return sev.charAt(0).toUpperCase() + sev.slice(1);
+}
+
+let _allFindings = [];
+let _currentFilter = 'all';
+
+function applyFilter(f) {
+  _currentFilter = f;
+  document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('filter-' + f).classList.add('active');
+  renderFindings();
+}
+
+function renderFindings() {
+  const list = document.getElementById('findings-list');
+  list.innerHTML = '';
+  const toShow = _allFindings.filter(r => {
+    if (_currentFilter === 'all') return true;
+    if (_currentFilter === 'conflict') return r.conflict;
+    if (_currentFilter === 'clear') return !r.conflict;
+    return true;
+  });
+  if (!toShow.length) {
+    list.innerHTML = '<div style="text-align:center;padding:24px;color:var(--muted);font-size:.85rem">No results for this filter.</div>';
+    return;
+  }
+  toShow.forEach((r, i) => {
+    const row = document.createElement('div');
+    const rowClass = r.sev === 'none' ? 'clear' : (r.sev ? 'conflict' : 'unknown');
+    row.className = `finding-row ${rowClass}`;
+    row.style.animationDelay = (i * 0.04) + 's';
+    row.innerHTML = `
+      <div class="finding-meta">
+        <div class="pkg-name">${esc(r.name)}</div>
+        <div class="pkg-version">v${esc(r.version)} · ${esc(r.used_in || 'runtime')}</div>
+        <div class="pkg-license">${esc(r.license || '—')}</div>
+        ${r.reason ? `<div class="conflict-reason">⚠ ${esc(r.reason)}</div>` : ''}
+        ${r.remediation ? `<div class="remediation">💡 ${esc(r.remediation)}</div>` : ''}
+      </div>
+      <div class="sev-badge ${sevClass(r.sev)}">${sevLabel(r.sev)}</div>
+    `;
+    list.appendChild(row);
+  });
+}
+
+function esc(s) {
+  if (!s) return '';
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+function renderGrader(graderResult) {
+  const card = document.getElementById('grader-card');
+  card.style.display = 'block';
+
+  const total = graderResult.total ?? 0;
+  const pct = Math.round(total * 100);
+  const ring = document.getElementById('score-ring');
+  ring.style.setProperty('--pct', pct);
+  document.getElementById('score-val').textContent = (total * 100).toFixed(1) + '%';
+
+  const bd = graderResult.breakdown || {};
+
+  const metrics = [
+    { name:'Precision', val: bd.precision, fmt: v => (v*100).toFixed(1)+'%' },
+    { name:'Recall',    val: bd.recall,    fmt: v => (v*100).toFixed(1)+'%' },
+    { name:'F1 Score',  val: bd.f1,        fmt: v => (v*100).toFixed(1)+'%' },
+    { name:'True Pos',  val: bd.tp,        fmt: v => v ?? '—' },
+    { name:'False Pos', val: bd.fp,        fmt: v => v ?? '—' },
+    { name:'False Neg', val: bd.fn,        fmt: v => v ?? '—' },
+  ];
+
+  const grid = document.getElementById('metric-grid');
+  grid.innerHTML = '';
+  metrics.forEach(m => {
+    const el = document.createElement('div');
+    el.className = 'metric';
+    const display = (m.val !== undefined && m.val !== null) ? m.fmt(m.val) : '—';
+    el.innerHTML = `<div class="metric-val">${display}</div><div class="metric-name">${m.name}</div>`;
+    grid.appendChild(el);
+  });
+
+  const bars = [
+    { label:'Precision', val: bd.precision ?? 0, cls:'green' },
+    { label:'Recall',    val: bd.recall ?? 0,    cls:'green' },
+    { label:'F1 Score',  val: bd.f1 ?? 0,        cls:'' },
+  ];
+  const pb = document.getElementById('progress-bars');
+  pb.innerHTML = '';
+  bars.forEach(b => {
+    pb.innerHTML += `
+      <div class="progress-bar-wrap">
+        <div class="progress-label"><span>${b.label}</span><span>${(b.val*100).toFixed(1)}%</span></div>
+        <div class="progress-bar">
+          <div class="progress-fill ${b.cls}" style="width:${(b.val*100).toFixed(1)}%"></div>
+        </div>
+      </div>`;
+  });
+}
+
+async function runScan() {
+  const url = document.getElementById('gh-url').value.trim();
+  if (!url) {
+    setStatus('Please enter a GitHub repository URL.', 'error');
+    return;
+  }
+  if (!/^https?:\/\/github\.com\//i.test(url)) {
+    setStatus('URL must start with https://github.com/', 'error');
+    return;
+  }
+
+  // UI: loading state
+  const btn = document.getElementById('scan-btn');
+  btn.disabled = true;
+  document.getElementById('spinner').classList.add('active');
+  document.getElementById('btn-label').textContent = 'Scanning…';
+  document.getElementById('empty-state').style.display = 'none';
+  document.getElementById('summary-card').style.display = 'none';
+  document.getElementById('findings-card').style.display = 'none';
+  document.getElementById('grader-card').style.display = 'none';
+  setStatus(`⏳ Fetching manifest from ${url} …`, 'info');
+
+  try {
+    const apiUrl = `${API_BASE}/scan/github?url=${encodeURIComponent(url)}`;
+    const resp = await fetch(apiUrl);
+    if (!resp.ok) {
+      const err = await resp.json().catch(() => ({ detail: resp.statusText }));
+      throw new Error(err.detail || `HTTP ${resp.status}`);
+    }
+    const data = await resp.json();
+    clearStatus();
+    renderResults(data);
+  } catch (e) {
+    setStatus('❌ ' + e.message, 'error');
+    document.getElementById('empty-state').style.display = 'block';
+  } finally {
+    btn.disabled = false;
+    document.getElementById('spinner').classList.remove('active');
+    document.getElementById('btn-label').textContent = '🔍 Scan';
+  }
+}
+
+function renderResults(data) {
+  if (!data.manifest_type) {
+    setStatus('⚠ ' + (data.summary || 'No manifest found.'), 'error');
+    document.getElementById('empty-state').style.display = 'block';
+    return;
+  }
+
+  setStatus('✅ ' + data.summary, 'success');
+
+  // Build rows from parallel deps+findings arrays
+  const depMap = {};
+  (data.dependencies || []).forEach(d => { depMap[d.dep_id] = d; });
+
+  _allFindings = (data.findings || []).map(f => {
+    const dep = depMap[f.source_id] || {};
+    return {
+      dep_id: f.source_id,
+      name: dep.name || f.source_id,
+      version: dep.version || '?',
+      used_in: dep.used_in,
+      license: f.license_spdx,
+      sev: f.severity,
+      conflict: f.severity && f.severity !== 'none',
+      reason: f.conflict_reason,
+      remediation: f.remediation,
+    };
+  });
+  _allFindings.sort((a,b) => {
+    const order = {critical:0,high:1,medium:2,low:3,none:4};
+    return (order[a.sev]??5) - (order[b.sev]??5);
+  });
+
+  // Summary card
+  const conflicts = _allFindings.filter(r => r.conflict).length;
+  const clear     = _allFindings.filter(r => !r.conflict).length;
+  const total     = _allFindings.length;
+
+  document.getElementById('summary-card').style.display = 'block';
+  document.getElementById('manifest-pill').innerHTML =
+    `${data.manifest_type === 'npm' ? '📦 npm' : '🐍 PyPI'} &nbsp;·&nbsp; <span style="color:var(--muted)">${data.manifest_url?.split('/').pop() || 'manifest'}</span>`;
+
+  document.getElementById('stat-row').innerHTML = `
+    <div class="stat"><div class="stat-val">${total}</div><div class="stat-label">Total Packages</div></div>
+    <div class="stat"><div class="stat-val ${conflicts>0?'red':'green'}">${conflicts}</div><div class="stat-label">Conflicts</div></div>
+    <div class="stat"><div class="stat-val green">${clear}</div><div class="stat-label">Compliant</div></div>
+    ${data.grader_result ? `<div class="stat"><div class="stat-val" style="color:var(--accent2)">${(data.grader_result.total*100).toFixed(1)}%</div><div class="stat-label">Grader Score</div></div>` : ''}
+  `;
+  document.getElementById('summary-text').textContent = data.summary;
+
+  // Findings
+  document.getElementById('findings-card').style.display = 'block';
+  document.getElementById('filter-conflict').textContent = `⚠ Conflicts (${conflicts})`;
+  document.getElementById('filter-clear').textContent = `✓ Clear (${clear})`;
+  _currentFilter = 'all';
+  document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('filter-all').classList.add('active');
+  renderFindings();
+
+  // Grader
+  if (data.grader_result) {
+    renderGrader(data.grader_result);
+  }
+}
+
+// Allow pressing Enter in the input
+document.getElementById('gh-url').addEventListener('keydown', e => {
+  if (e.key === 'Enter') runScan();
+});
+</script>
+</body>
+</html>

@@ -14,15 +14,17 @@ lifespan. All DB calls are fully async — no thread-pool overhead.
 """
 from __future__ import annotations
 
+import asyncio
 import os
 import json
 import uuid
 from contextlib import asynccontextmanager
 from typing import Any, AsyncGenerator
 
+import httpx
 import psycopg
 from psycopg_pool import AsyncConnectionPool
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Query
 from fastapi.responses import HTMLResponse
 from pydantic import BaseModel
 
@@ -142,8 +144,10 @@ async def index():
     GET  /env/state/{session_id}
     GET  /env/score/{session_id}
     POST /env/reset/{session_id}
-    GET  /health</pre>
+    GET  /health
+    GET  /scan/github?url=&lt;github_url&gt;</pre>
     <p><a href="/docs" style="color:#60a0ff">Interactive API Docs</a></p>
+    <p><a href="underwire_v2.html" style="color:#60a0ff">Live Scanner Dashboard</a></p>
     <p style="color:#888;font-size:12px">Sessions persisted to PostgreSQL.</p>
     </body></html>
     """
@@ -190,6 +194,35 @@ async def health():
         row = await conn.execute("SELECT COUNT(*) FROM sessions")
         count = (await row.fetchone())[0]
     return {"status": "ok", "persisted_sessions": count, "db": "postgresql"}
+
+
+@app.get("/scan/github")
+async def scan_github(
+    url: str = Query(..., description="GitHub repository URL, e.g. https://github.com/owner/repo"),
+) -> dict[str, Any]:
+    """
+    Scan a GitHub repository for OSS license compliance issues.
+
+    Fetches ``package.json`` (npm) or ``requirements.txt`` (Python) from the
+    repository via raw.githubusercontent.com, parses each dependency, maps it
+    to a known SPDX license, and runs the detect_conflicts grader.
+
+    Returns structured findings JSON with:
+    - ``dependencies``  — list of resolved DependencyEntry objects
+    - ``findings``      — list of ScanFinding objects (conflicts + clear)
+    - ``grader_result`` — Reward breakdown (precision, recall, F1, ...)
+    - ``summary``       — human-readable scan summary
+    """
+    from scan_github import scan_github_repo
+    try:
+        result = await asyncio.get_event_loop().run_in_executor(
+            None, scan_github_repo, url
+        )
+    except httpx.RequestError as exc:
+        raise HTTPException(status_code=502, detail=f"Network error fetching repo: {exc}")
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc))
+    return result
 
 
 if __name__ == "__main__":
