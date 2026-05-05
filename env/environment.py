@@ -5,9 +5,16 @@ Implements the standard OpenEnv interface:
   reset() -> Observation
   step(action) -> (Observation, Reward, done, info)
   state() -> EnvironmentState
+
+Phase 2 — AI Brain:
+  When regex classification returns UNKNOWN or agent confidence < 0.5,
+  the environment calls the Anthropic Claude API to reason about the
+  license text and return an SPDX ID + human-readable explanation.
+  Requires ANTHROPIC_API_KEY env var.
 """
 from __future__ import annotations
 
+import os
 import uuid
 from typing import Any, Literal
 
@@ -17,6 +24,83 @@ from env.models import (
     LicenseCategory, ConflictSeverity,
 )
 from data.license_corpus import LICENSE_CORPUS, get_conflict_severity
+
+
+# ---------------------------------------------------------------------------
+# Claude AI helper
+# ---------------------------------------------------------------------------
+
+def _claude_classify_license(license_text: str) -> dict[str, str]:
+    """
+    Call Anthropic Claude to classify a license when rule-based confidence
+    is low (< 0.5) or the SPDX result is UNKNOWN.
+
+    Returns a dict with keys:
+      spdx_id   — best-guess SPDX identifier (e.g. "MIT", "Apache-2.0")
+      category  — one of: permissive / copyleft / copyleft_weak /
+                          copyleft_network / public_domain / proprietary / unknown
+      reasoning — Claude's explanation (shown in the UI AI Analysis box)
+
+    Falls back gracefully if ANTHROPIC_API_KEY is missing or the call fails.
+    """
+    api_key = os.environ.get("ANTHROPIC_API_KEY", "")
+    if not api_key:
+        return {
+            "spdx_id": "UNKNOWN",
+            "category": "unknown",
+            "reasoning": "ANTHROPIC_API_KEY not configured — AI analysis unavailable.",
+        }
+
+    try:
+        import anthropic  # type: ignore
+    except ImportError:
+        return {
+            "spdx_id": "UNKNOWN",
+            "category": "unknown",
+            "reasoning": "anthropic package not installed — AI analysis unavailable.",
+        }
+
+    # Truncate to avoid excessive token usage
+    excerpt = license_text[:3000] if license_text else "(empty)"
+
+    prompt = (
+        "You are an expert open-source license compliance lawyer.\n"
+        "Analyse the following license text and respond with ONLY a JSON object "
+        "containing exactly three keys:\n"
+        "  spdx_id   — the SPDX identifier (e.g. MIT, Apache-2.0, GPL-3.0-only, UNKNOWN)\n"
+        "  category  — one of: permissive, copyleft, copyleft_weak, copyleft_network, "
+        "public_domain, proprietary, unknown\n"
+        "  reasoning — one concise paragraph explaining your conclusion\n\n"
+        f"License text:\n{excerpt}\n\n"
+        "Respond with valid JSON only — no markdown, no preamble."
+    )
+
+    try:
+        client = anthropic.Anthropic(api_key=api_key)
+        message = client.messages.create(
+            model="claude-opus-4-5",
+            max_tokens=512,
+            messages=[{"role": "user", "content": prompt}],
+        )
+        raw = message.content[0].text.strip()
+        # Strip markdown fences if Claude wraps JSON
+        if raw.startswith("```"):
+            raw = raw.split("```")[1]
+            if raw.startswith("json"):
+                raw = raw[4:].strip()
+        import json
+        result = json.loads(raw)
+        return {
+            "spdx_id": str(result.get("spdx_id", "UNKNOWN")),
+            "category": str(result.get("category", "unknown")),
+            "reasoning": str(result.get("reasoning", "")),
+        }
+    except Exception as exc:  # noqa: BLE001
+        return {
+            "spdx_id": "UNKNOWN",
+            "category": "unknown",
+            "reasoning": f"AI analysis failed: {exc}",
+        }
 
 
 TaskId = Literal["classify_licenses", "detect_conflicts", "generate_compliance_report"]
@@ -224,13 +308,48 @@ class LicenseComplianceEnv:
         truth = (self._ground_truth if self.task_id == "classify_licenses"
                  else {}).get(file_id)
 
+        spdx_result = action.classification or "UNKNOWN"
+        confidence  = action.confidence if action.confidence is not None else 1.0
+        ai_reasoning: str | None = None
+        ai_used = False
+
+        # ── Phase 2: Claude fallback ──────────────────────────────────────
+        # Trigger when the rule-based result is uncertain or unresolved.
+        needs_ai = (spdx_result == "UNKNOWN" or confidence < 0.5)
+        if needs_ai:
+            # Pull raw license text from the file list if available
+            raw_text = ""
+            for f in self._files:
+                if f.file_id == file_id:
+                    raw_text = getattr(f, "content", "") or ""
+                    break
+            # Fall back to the SPDX string itself as a hint if no raw text
+            if not raw_text:
+                raw_text = spdx_result
+
+            ai_result = _claude_classify_license(raw_text)
+            if ai_result["spdx_id"] != "UNKNOWN":
+                spdx_result = ai_result["spdx_id"]
+            ai_reasoning = ai_result["reasoning"]
+            ai_used = True
+
+            # Override category with AI suggestion if available
+            try:
+                action_category = LicenseCategory(ai_result["category"])
+            except ValueError:
+                action_category = action.category or LicenseCategory.UNKNOWN
+        else:
+            action_category = action.category or LicenseCategory.UNKNOWN
+        # ─────────────────────────────────────────────────────────────────
+
         finding = ScanFinding(
             finding_id=str(uuid.uuid4())[:8],
             source_id=file_id or "unknown",
-            license_spdx=action.classification or "UNKNOWN",
-            category=action.category or LicenseCategory.UNKNOWN,
+            license_spdx=spdx_result,
+            category=action_category,
             severity=ConflictSeverity.NONE,
             agent_confidence=action.confidence,
+            ai_reasoning=ai_reasoning,
         )
 
         # Replace existing finding for same source
@@ -239,14 +358,18 @@ class LicenseComplianceEnv:
 
         # Step-level partial reward
         if truth:
-            spdx_ok = (action.classification or "").strip() == truth.get("spdx_id", "")
-            cat_ok = (action.category and action.category.value == truth.get("category"))
+            spdx_ok = spdx_result.strip() == truth.get("spdx_id", "")
+            cat_ok = (action_category and action_category.value == truth.get("category"))
             step_reward = (0.1 if spdx_ok else 0.0) + (0.04 if cat_ok else 0.0)
-            msg = f"{'✓' if spdx_ok else '✗'} {file_id}: classified as {action.classification}"
+            ai_tag = " [AI]" if ai_used else ""
+            msg = f"{'✓' if spdx_ok else '✗'}{ai_tag} {file_id}: classified as {spdx_result}"
         else:
             step_reward = 0.01  # no ground truth for this file
-            msg = f"Classified {file_id} (no GT available)"
+            ai_tag = " [AI]" if ai_used else ""
+            msg = f"Classified{ai_tag} {file_id} (no GT available)"
 
+        if ai_reasoning:
+            self._messages.append(f"[AI] {ai_reasoning[:120]}…")
         self._messages.append(f"[CLASSIFY] {msg}")
         return Reward(total=min(1.0, step_reward), message=msg)
 

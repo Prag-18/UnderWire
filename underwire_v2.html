@@ -24,6 +24,11 @@
     --muted:     #6b7280;
     --radius:    12px;
     --glow:      0 0 24px rgba(108,99,255,.25);
+    /* Phase 2 — AI Brain */
+    --ai-purple:    #c084fc;
+    --ai-bg:        #1a0d2e;
+    --ai-border:    #7c3aed;
+    --ai-glow:      0 0 20px rgba(192,132,252,.3);
   }
   *{box-sizing:border-box;margin:0;padding:0}
   body{background:var(--bg);color:var(--text);font-family:'Inter',sans-serif;min-height:100vh;overflow-x:hidden}
@@ -199,6 +204,40 @@
   .empty-state .icon{font-size:3rem;margin-bottom:16px;opacity:.4}
   .empty-state h2{font-size:1.1rem;font-weight:600;margin-bottom:8px;color:var(--text);opacity:.5}
   .empty-state p{font-size:.85rem;line-height:1.6}
+  /* ── AI Analysis box (Phase 2) ── */
+  .ai-analysis-box{
+    margin-top:10px;
+    padding:12px 14px;
+    border-radius:8px;
+    background:var(--ai-bg);
+    border:1px solid var(--ai-border);
+    box-shadow:var(--ai-glow);
+    animation:fadeIn .35s ease;
+  }
+  .ai-analysis-header{
+    display:flex;align-items:center;gap:7px;
+    font-size:.72rem;font-weight:700;letter-spacing:.06em;
+    text-transform:uppercase;color:var(--ai-purple);margin-bottom:7px;
+  }
+  .ai-analysis-header .ai-icon{
+    font-size:1rem;animation:pulse 2s ease infinite;
+  }
+  @keyframes pulse{
+    0%,100%{opacity:1;transform:scale(1)}
+    50%{opacity:.7;transform:scale(1.15)}
+  }
+  .ai-analysis-text{
+    font-size:.8rem;color:#d8b4fe;line-height:1.6;
+    font-style:italic;
+  }
+  .ai-badge{
+    display:inline-flex;align-items:center;gap:4px;
+    font-size:.65rem;font-weight:700;padding:2px 7px;
+    border-radius:10px;background:rgba(124,58,237,.25);
+    border:1px solid var(--ai-border);color:var(--ai-purple);
+    margin-left:6px;vertical-align:middle;
+    animation:fadeIn .3s ease;
+  }
 </style>
 </head>
 <body>
@@ -209,7 +248,7 @@
     <h1>UnderWire</h1>
     <div style="font-size:.8rem;color:var(--muted);margin-top:2px">OSS License Compliance Scanner</div>
   </div>
-  <span id="header-tag">Real Data · Real Scanning</span>
+  <span id="header-tag">Real Data · Real Scanning · <span style="color:var(--ai-purple)">✦ AI Brain</span></span>
 </header>
 
 <div class="scan-bar">
@@ -332,10 +371,16 @@ function renderFindings() {
     const row = document.createElement('div');
     const rowClass = r.sev === 'none' ? 'clear' : (r.sev ? 'conflict' : 'unknown');
     row.className = `finding-row ${rowClass}`;
+    row.id = `row-${r.dep_id}`;
     row.style.animationDelay = (i * 0.04) + 's';
+
+    const aiBadge = r.ai_reasoning
+      ? `<span class="ai-badge" title="License identified by Claude AI">✦ AI</span>`
+      : '';
+
     row.innerHTML = `
       <div class="finding-meta">
-        <div class="pkg-name">${esc(r.name)}</div>
+        <div class="pkg-name">${esc(r.name)}${aiBadge}</div>
         <div class="pkg-version">v${esc(r.version)} · ${esc(r.used_in || 'runtime')}</div>
         <div class="pkg-license">${esc(r.license || '—')}</div>
         ${r.reason ? `<div class="conflict-reason">⚠ ${esc(r.reason)}</div>` : ''}
@@ -343,6 +388,12 @@ function renderFindings() {
       </div>
       <div class="sev-badge ${sevClass(r.sev)}">${sevLabel(r.sev)}</div>
     `;
+
+    // Append AI Analysis box if this finding was AI-resolved
+    if (r.ai_reasoning) {
+      addBrainStep(row, r.ai_reasoning);
+    }
+
     list.appendChild(row);
   });
 }
@@ -350,6 +401,31 @@ function renderFindings() {
 function esc(s) {
   if (!s) return '';
   return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+/**
+ * addBrainStep — Phase 2 AI Brain
+ * Appends a distinct purple "AI Analysis" box inside a finding row element.
+ * Called automatically when a finding has ai_reasoning set (meaning Claude
+ * was invoked instead of the rule-based classifier).
+ *
+ * @param {HTMLElement} rowEl   - The .finding-row element to inject into
+ * @param {string}      reasoning - Claude's explanation text
+ */
+function addBrainStep(rowEl, reasoning) {
+  const box = document.createElement('div');
+  box.className = 'ai-analysis-box';
+  box.innerHTML = `
+    <div class="ai-analysis-header">
+      <span class="ai-icon">✦</span>
+      AI Analysis — Claude
+    </div>
+    <div class="ai-analysis-text">${esc(reasoning)}</div>
+  `;
+  // Insert after the main finding-meta/sev content (inside the row flex)
+  rowEl.style.flexDirection = 'column';
+  rowEl.style.alignItems    = 'stretch';
+  rowEl.appendChild(box);
 }
 
 function renderGrader(graderResult) {
@@ -468,6 +544,7 @@ function renderResults(data) {
       conflict: f.severity && f.severity !== 'none',
       reason: f.conflict_reason,
       remediation: f.remediation,
+      ai_reasoning: f.ai_reasoning || null,
     };
   });
   _allFindings.sort((a,b) => {

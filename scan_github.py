@@ -8,7 +8,9 @@ module:
   2. Fetches the manifest via httpx.
   3. Parses it into a list of DependencyEntry objects with resolved licenses
      (using static NPM and PyPI license dicts, augmented by LICENSE_CORPUS).
-  4. Runs the detect_conflicts grader and returns structured findings JSON.
+  4. For packages not found in static maps, calls Claude AI to reason about
+     the likely license (Phase 2 — AI Brain).
+  5. Runs the detect_conflicts grader and returns structured findings JSON.
 
 Supported manifest files (tried in order):
   - package.json   (Node/npm repos)
@@ -16,6 +18,7 @@ Supported manifest files (tried in order):
 """
 from __future__ import annotations
 
+import os
 import re
 import json
 import uuid as _uuid
@@ -313,6 +316,73 @@ def _resolve_license_category(spdx: str) -> str:
     return EXTRA_LICENSE_CATEGORIES.get(spdx, "unknown")
 
 
+# ---------------------------------------------------------------------------
+# Claude AI fallback for the scanner (Phase 2 — AI Brain)
+# ---------------------------------------------------------------------------
+
+def _claude_classify_for_scan(
+    package_name: str,
+    ecosystem: str,  # "npm" or "python"
+) -> dict[str, str]:
+    """
+    Ask Claude to reason about the most likely SPDX license for a package
+    that isn’t in the static maps.
+
+    Returns:
+      spdx_id   — SPDX identifier or "UNKNOWN"
+      category  — license category string
+      reasoning — Claude’s explanation (displayed in purple AI Analysis box)
+    """
+    api_key = os.environ.get("ANTHROPIC_API_KEY", "")
+    if not api_key:
+        return {"spdx_id": "UNKNOWN", "category": "unknown",
+                "reasoning": "ANTHROPIC_API_KEY not configured."}
+
+    try:
+        import anthropic  # type: ignore
+    except ImportError:
+        return {"spdx_id": "UNKNOWN", "category": "unknown",
+                "reasoning": "anthropic package not installed."}
+
+    prompt = (
+        "You are an expert open-source license compliance lawyer.\n"
+        f"A {ecosystem} package named '{package_name}' has an unknown license.\n"
+        "Based on your knowledge of this package, respond with ONLY a JSON object "
+        "containing exactly three keys:\n"
+        "  spdx_id   — the most likely SPDX identifier (e.g. MIT, Apache-2.0, "
+        "GPL-3.0-only, UNKNOWN if truly unclear)\n"
+        "  category  — one of: permissive, copyleft, copyleft_weak, "
+        "copyleft_network, public_domain, proprietary, unknown\n"
+        "  reasoning — one concise paragraph explaining your conclusion\n\n"
+        "Respond with valid JSON only — no markdown, no preamble."
+    )
+
+    try:
+        client = anthropic.Anthropic(api_key=api_key)
+        message = client.messages.create(
+            model="claude-opus-4-5",
+            max_tokens=256,
+            messages=[{"role": "user", "content": prompt}],
+        )
+        raw = message.content[0].text.strip()
+        if raw.startswith("```"):
+            raw = raw.split("```")[1]
+            if raw.startswith("json"):
+                raw = raw[4:].strip()
+        result = json.loads(raw)
+        return {
+            "spdx_id": str(result.get("spdx_id", "UNKNOWN")),
+            "category": str(result.get("category", "unknown")),
+            "reasoning": str(result.get("reasoning", "")),
+        }
+    except Exception as exc:  # noqa: BLE001
+        return {
+            "spdx_id": "UNKNOWN",
+            "category": "unknown",
+            "reasoning": f"AI analysis failed: {exc}",
+        }
+
+
 def _github_url_to_raw(github_url: str, path: str, branch: str = "main") -> str:
     match = re.match(
         r"https?://github\.com/([^/]+)/([^/?\s#]+)", github_url.strip()
@@ -554,9 +624,27 @@ def scan_github_repo(github_url: str) -> dict[str, Any]:
 
     findings: list[ScanFinding] = []
     ground_truth: dict[str, dict] = {}
+    ecosystem = "npm" if manifest_type == "npm" else "python"
+    ai_resolved_count = 0
 
     for dep in deps:
         spdx = dep.resolved_license or "UNKNOWN"
+        ai_reasoning: str | None = None
+        confidence = 0.85  # default for rule-based hits
+
+        # ── Phase 2: Claude AI fallback ──────────────────────────────────
+        # If the static map has no entry for this package, ask Claude.
+        if spdx == "UNKNOWN":
+            confidence = 0.0  # signal that we have no rule-based answer
+            ai_result = _claude_classify_for_scan(dep.name, ecosystem)
+            ai_reasoning = ai_result["reasoning"]
+            if ai_result["spdx_id"] != "UNKNOWN":
+                spdx = ai_result["spdx_id"]
+                dep.resolved_license = spdx
+                confidence = 0.70  # AI-inferred, lower confidence than static map
+                ai_resolved_count += 1
+        # ─────────────────────────────────────────────────────────────────
+
         severity_str = get_conflict_severity(project_license, spdx, "proprietary")
         category_str = _resolve_license_category(spdx)
 
@@ -589,8 +677,9 @@ def scan_github_repo(github_url: str) -> dict[str, Any]:
             severity=severity,
             conflict_reason=reason,
             remediation=remediation,
-            agent_confidence=0.85,
+            agent_confidence=confidence,
             reviewed=True,
+            ai_reasoning=ai_reasoning,
         )
         findings.append(finding)
         ground_truth[dep.dep_id] = {
@@ -608,13 +697,15 @@ def scan_github_repo(github_url: str) -> dict[str, Any]:
     )
 
     conflict_count = sum(1 for f in findings if f.severity != ConflictSeverity.NONE)
-    unknown_count = sum(1 for d in deps if not d.resolved_license)
+    unknown_count  = sum(1 for f in findings if f.license_spdx == "UNKNOWN")
     pkg_label = "npm" if manifest_type == "npm" else "PyPI"
+    ai_note = f", {ai_resolved_count} resolved by AI" if ai_resolved_count else ""
     summary = (
         f"Scanned {len(deps)} {pkg_label} "
         f"{'package' if len(deps) == 1 else 'packages'} from {github_url}. "
         f"Found {conflict_count} license conflict{'s' if conflict_count != 1 else ''}"
-        + (f", {unknown_count} with unknown licenses." if unknown_count else ".")
+        + (f", {unknown_count} with unknown licenses" if unknown_count else "")
+        + ai_note + "."
     )
 
     return {

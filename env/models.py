@@ -73,6 +73,8 @@ class ScanFinding(BaseModel):
     remediation: Optional[str] = None
     agent_confidence: float = Field(ge=0.0, le=1.0, default=1.0)
     reviewed: bool = False
+    # Phase 2 — AI Brain: Claude's reasoning text (None = rule-based result)
+    ai_reasoning: Optional[str] = None
 
 
 class ComplianceReport(BaseModel):
