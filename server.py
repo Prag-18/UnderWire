@@ -48,6 +48,12 @@ CREATE TABLE IF NOT EXISTS sessions (
 CREATE INDEX IF NOT EXISTS idx_sessions_updated_at ON sessions (updated_at);
 """
 
+# Safe migrations — run after DDL so they apply to existing tables too
+MIGRATIONS = [
+    "ALTER TABLE sessions ADD COLUMN IF NOT EXISTS agent_name TEXT DEFAULT NULL;",
+    "ALTER TABLE sessions ADD COLUMN IF NOT EXISTS final_score REAL DEFAULT NULL;",
+]
+
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncGenerator:
     global _pool, DATABASE_URL
@@ -56,6 +62,8 @@ async def lifespan(app: FastAPI) -> AsyncGenerator:
     await _pool.open()
     async with _pool.connection() as conn:
         await conn.execute(DDL)
+        for migration in MIGRATIONS:
+            await conn.execute(migration)
     yield
     await _pool.close()
 
@@ -68,11 +76,11 @@ app = FastAPI(
 )
 
 
-async def _create_session(session_id: str, task_id: str, seed: int) -> None:
+async def _create_session(session_id: str, task_id: str, seed: int, agent_name: str | None = None) -> None:
     async with _pool.connection() as conn:
         await conn.execute(
-            "INSERT INTO sessions (session_id, task_id, seed) VALUES (%s, %s, %s) ON CONFLICT (session_id) DO NOTHING",
-            (session_id, task_id, seed),
+            "INSERT INTO sessions (session_id, task_id, seed, agent_name) VALUES (%s, %s, %s, %s) ON CONFLICT (session_id) DO NOTHING",
+            (session_id, task_id, seed, agent_name),
         )
 
 
@@ -97,18 +105,22 @@ async def _load_env(session_id: str) -> LicenseComplianceEnv:
     return env
 
 
-async def _save_env(session_id: str, env: LicenseComplianceEnv) -> None:
+async def _save_env(session_id: str, env: LicenseComplianceEnv, final_score: float | None = None) -> None:
     findings_json = json.dumps([f.model_dump() for f in env._findings])
     async with _pool.connection() as conn:
         await conn.execute(
-            "UPDATE sessions SET step=%s, done=%s, findings=%s::jsonb, updated_at=NOW() WHERE session_id=%s",
-            (env._step_count, env._done, findings_json, session_id),
+            """UPDATE sessions
+               SET step=%s, done=%s, findings=%s::jsonb,
+                   final_score=COALESCE(%s, final_score), updated_at=NOW()
+               WHERE session_id=%s""",
+            (env._step_count, env._done, findings_json, final_score, session_id),
         )
 
 
 class CreateEnvRequest(BaseModel):
     task_id: str = "classify_licenses"
     seed: int = 42
+    agent_name: str | None = None
 
 class CreateEnvResponse(BaseModel):
     session_id: str
@@ -155,7 +167,7 @@ async def index():
 @app.post("/env/create", response_model=CreateEnvResponse)
 async def create_env(req: CreateEnvRequest):
     session_id = str(uuid.uuid4())[:12]
-    await _create_session(session_id, req.task_id, req.seed)
+    await _create_session(session_id, req.task_id, req.seed, req.agent_name)
     env = LicenseComplianceEnv(task_id=req.task_id, seed=req.seed)
     obs = env.reset()
     await _save_env(session_id, env)
@@ -168,7 +180,9 @@ async def step(req: StepRequest):
         obs, reward, done, info = env.step(req.action)
     except RuntimeError as e:
         raise HTTPException(status_code=400, detail=str(e))
-    await _save_env(req.session_id, env)
+    # Persist final_score when episode ends so leaderboard can read it
+    final_score = env.final_score().total if done else None
+    await _save_env(req.session_id, env, final_score=final_score)
     return StepResponse(observation=obs, reward=reward, done=done, info=info)
 
 @app.get("/env/state/{session_id}", response_model=EnvironmentState)
@@ -194,6 +208,54 @@ async def health():
         row = await conn.execute("SELECT COUNT(*) FROM sessions")
         count = (await row.fetchone())[0]
     return {"status": "ok", "persisted_sessions": count, "db": "postgresql"}
+
+
+@app.get("/hall-of-shame")
+async def hall_of_shame() -> list[dict]:
+    """
+    Return pre-scanned license findings for 10 famous GitHub repos.
+    Data lives in data/hall_of_shame.json — no live scanning required.
+    """
+    shame_path = os.path.join(os.path.dirname(__file__), "data", "hall_of_shame.json")
+    with open(shame_path, encoding="utf-8") as f:
+        return json.load(f)
+
+
+@app.get("/leaderboard")
+async def leaderboard() -> dict[str, list]:
+    """
+    Top-5 agents per task ordered by best final_score.
+    Polls every 15 s from the frontend so live runs appear automatically.
+    """
+    async with _pool.connection() as conn:
+        cur = await conn.execute(
+            """
+            SELECT agent_name, task_id,
+                   MAX(final_score) AS score,
+                   COUNT(*)         AS runs,
+                   MAX(updated_at)  AS last_run
+            FROM   sessions
+            WHERE  agent_name  IS NOT NULL
+              AND  final_score IS NOT NULL
+              AND  done = TRUE
+            GROUP  BY agent_name, task_id
+            ORDER  BY task_id, score DESC
+            """
+        )
+        records = await cur.fetchall()
+
+    by_task: dict[str, list] = {}
+    for agent_name, task_id, score, runs, last_run in records:
+        bucket = by_task.setdefault(task_id, [])
+        if len(bucket) < 5:
+            bucket.append({
+                "rank":       len(bucket) + 1,
+                "agent_name": agent_name,
+                "score":      round(float(score), 4),
+                "runs":       runs,
+                "last_run":   last_run.isoformat() if last_run else None,
+            })
+    return by_task
 
 
 @app.get("/scan/github")

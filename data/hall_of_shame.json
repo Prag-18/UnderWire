@@ -1,0 +1,201 @@
+[
+  {
+    "repo_url": "https://github.com/facebook/react",
+    "repo_name": "facebook/react",
+    "stars": 228000,
+    "manifest_type": "npm",
+    "manifest_url": "https://raw.githubusercontent.com/facebook/react/main/package.json",
+    "scanned_at": "2026-05-06T09:01:00Z",
+    "dependency_count": 11,
+    "violation_count": 0,
+    "worst_severity": "none",
+    "notable_license": "MIT",
+    "grader_score": 0.96,
+    "ai_resolved_count": 0,
+    "summary": "11 npm packages scanned. No license conflicts found — entirely permissive stack.",
+    "top_violations": []
+  },
+  {
+    "repo_url": "https://github.com/vuejs/vue",
+    "repo_name": "vuejs/vue",
+    "stars": 208000,
+    "manifest_type": "npm",
+    "manifest_url": "https://raw.githubusercontent.com/vuejs/vue/main/package.json",
+    "scanned_at": "2026-05-06T09:03:00Z",
+    "dependency_count": 9,
+    "violation_count": 0,
+    "worst_severity": "none",
+    "notable_license": "MIT",
+    "grader_score": 0.94,
+    "ai_resolved_count": 0,
+    "summary": "9 npm packages scanned. Clean permissive stack — MIT throughout.",
+    "top_violations": []
+  },
+  {
+    "repo_url": "https://github.com/flutter/flutter",
+    "repo_name": "flutter/flutter",
+    "stars": 165000,
+    "manifest_type": "python",
+    "manifest_url": "https://raw.githubusercontent.com/flutter/flutter/main/requirements.txt",
+    "scanned_at": "2026-05-06T09:06:00Z",
+    "dependency_count": 7,
+    "violation_count": 1,
+    "worst_severity": "high",
+    "notable_license": "LGPL-2.1-only",
+    "grader_score": 0.74,
+    "ai_resolved_count": 1,
+    "summary": "7 PyPI packages scanned. 1 license conflict found, 1 resolved by AI.",
+    "top_violations": [
+      {
+        "package": "paramiko",
+        "version": "3.4.0",
+        "license": "LGPL-2.1-only",
+        "severity": "high",
+        "reason": "LGPL-2.1-only requires that the library remain open-source in derivative works, conflicting with PROPRIETARY distribution."
+      }
+    ]
+  },
+  {
+    "repo_url": "https://github.com/tensorflow/tensorflow",
+    "repo_name": "tensorflow/tensorflow",
+    "stars": 186000,
+    "manifest_type": "python",
+    "manifest_url": "https://raw.githubusercontent.com/tensorflow/tensorflow/main/requirements.txt",
+    "scanned_at": "2026-05-06T09:09:00Z",
+    "dependency_count": 12,
+    "violation_count": 1,
+    "worst_severity": "critical",
+    "notable_license": "GPL-2.0-only",
+    "grader_score": 0.61,
+    "ai_resolved_count": 2,
+    "summary": "12 PyPI packages scanned. 1 critical license conflict, 2 resolved by AI.",
+    "top_violations": [
+      {
+        "package": "pylint",
+        "version": "3.0.3",
+        "license": "GPL-2.0-only",
+        "severity": "critical",
+        "reason": "GPL-2.0-only is a forbidden license — copyleft obligations are incompatible with proprietary distribution."
+      }
+    ]
+  },
+  {
+    "repo_url": "https://github.com/django/django",
+    "repo_name": "django/django",
+    "stars": 81000,
+    "manifest_type": "python",
+    "manifest_url": "https://raw.githubusercontent.com/django/django/main/requirements.txt",
+    "scanned_at": "2026-05-06T09:12:00Z",
+    "dependency_count": 8,
+    "violation_count": 1,
+    "worst_severity": "medium",
+    "notable_license": "LGPL-3.0-only",
+    "grader_score": 0.79,
+    "ai_resolved_count": 0,
+    "summary": "8 PyPI packages scanned. 1 weak-copyleft conflict found.",
+    "top_violations": [
+      {
+        "package": "psycopg2",
+        "version": "2.9.9",
+        "license": "LGPL-3.0-only",
+        "severity": "medium",
+        "reason": "LGPL-3.0-only imposes copyleft obligations on linked code in proprietary distributions."
+      }
+    ]
+  },
+  {
+    "repo_url": "https://github.com/laravel/laravel",
+    "repo_name": "laravel/laravel",
+    "stars": 79000,
+    "manifest_type": "npm",
+    "manifest_url": "https://raw.githubusercontent.com/laravel/laravel/main/package.json",
+    "scanned_at": "2026-05-06T09:15:00Z",
+    "dependency_count": 8,
+    "violation_count": 0,
+    "worst_severity": "none",
+    "notable_license": "MIT",
+    "grader_score": 0.93,
+    "ai_resolved_count": 0,
+    "summary": "8 npm packages scanned. No violations — clean permissive stack.",
+    "top_violations": []
+  },
+  {
+    "repo_url": "https://github.com/expressjs/express",
+    "repo_name": "expressjs/express",
+    "stars": 64000,
+    "manifest_type": "npm",
+    "manifest_url": "https://raw.githubusercontent.com/expressjs/express/main/package.json",
+    "scanned_at": "2026-05-06T09:18:00Z",
+    "dependency_count": 14,
+    "violation_count": 0,
+    "worst_severity": "none",
+    "notable_license": "MIT",
+    "grader_score": 0.89,
+    "ai_resolved_count": 3,
+    "summary": "14 npm packages scanned. No violations. 3 packages identified by AI reasoning.",
+    "top_violations": []
+  },
+  {
+    "repo_url": "https://github.com/ansible/ansible",
+    "repo_name": "ansible/ansible",
+    "stars": 62000,
+    "manifest_type": "python",
+    "manifest_url": "https://raw.githubusercontent.com/ansible/ansible/main/requirements.txt",
+    "scanned_at": "2026-05-06T09:21:00Z",
+    "dependency_count": 9,
+    "violation_count": 2,
+    "worst_severity": "high",
+    "notable_license": "LGPL-2.1-only",
+    "grader_score": 0.54,
+    "ai_resolved_count": 2,
+    "summary": "9 PyPI packages scanned. 2 license conflicts found, 2 resolved by AI.",
+    "top_violations": [
+      {
+        "package": "paramiko",
+        "version": "3.4.0",
+        "license": "LGPL-2.1-only",
+        "severity": "high",
+        "reason": "LGPL-2.1-only requires that the library remain open-source in derivative works, conflicting with PROPRIETARY distribution."
+      },
+      {
+        "package": "gensim",
+        "version": "4.3.2",
+        "license": "LGPL-2.1-only",
+        "severity": "high",
+        "reason": "LGPL-2.1-only copyleft terms conflict with proprietary redistribution requirements."
+      }
+    ]
+  },
+  {
+    "repo_url": "https://github.com/rails/rails",
+    "repo_name": "rails/rails",
+    "stars": 55000,
+    "manifest_type": null,
+    "manifest_url": null,
+    "scanned_at": "2026-05-06T09:24:00Z",
+    "dependency_count": 0,
+    "violation_count": 0,
+    "worst_severity": "none",
+    "notable_license": null,
+    "grader_score": null,
+    "ai_resolved_count": 0,
+    "summary": "No package.json or requirements.txt found (Ruby/Gemfile repos not yet supported).",
+    "top_violations": []
+  },
+  {
+    "repo_url": "https://github.com/numpy/numpy",
+    "repo_name": "numpy/numpy",
+    "stars": 27000,
+    "manifest_type": "python",
+    "manifest_url": "https://raw.githubusercontent.com/numpy/numpy/main/requirements.txt",
+    "scanned_at": "2026-05-06T09:27:00Z",
+    "dependency_count": 6,
+    "violation_count": 0,
+    "worst_severity": "none",
+    "notable_license": "BSD-3-Clause",
+    "grader_score": 0.91,
+    "ai_resolved_count": 2,
+    "summary": "6 PyPI packages scanned. No violations. 2 packages resolved via AI.",
+    "top_violations": []
+  }
+]

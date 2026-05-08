@@ -238,6 +238,127 @@
     margin-left:6px;vertical-align:middle;
     animation:fadeIn .3s ease;
   }
+  /* ── AI Analysis box (Phase 2) ── */
+  .ai-analysis-box{
+    margin-top:10px;
+    padding:12px 14px;
+    border-radius:8px;
+    background:var(--ai-bg);
+    border:1px solid var(--ai-border);
+    box-shadow:var(--ai-glow);
+    animation:fadeIn .35s ease;
+  }
+  .ai-analysis-header{
+    display:flex;align-items:center;gap:7px;
+    font-size:.72rem;font-weight:700;letter-spacing:.06em;
+    text-transform:uppercase;color:var(--ai-purple);margin-bottom:7px;
+  }
+  .ai-analysis-header .ai-icon{
+    font-size:1rem;animation:pulse 2s ease infinite;
+  }
+  @keyframes pulse{
+    0%,100%{opacity:1;transform:scale(1)}
+    50%{opacity:.7;transform:scale(1.15)}
+  }
+  .ai-analysis-text{
+    font-size:.8rem;color:#d8b4fe;line-height:1.6;
+    font-style:italic;
+  }
+  .ai-badge{
+    display:inline-flex;align-items:center;gap:4px;
+    font-size:.65rem;font-weight:700;padding:2px 7px;
+    border-radius:10px;background:rgba(124,58,237,.25);
+    border:1px solid var(--ai-border);color:var(--ai-purple);
+    margin-left:6px;vertical-align:middle;
+    animation:fadeIn .3s ease;
+  }
+
+  /* ── Tab bar ── */
+  .tab-bar{
+    display:flex;gap:0;border-bottom:2px solid var(--border);
+    background:var(--surface);padding:0 40px;
+  }
+  .tab-btn{
+    padding:14px 24px;background:none;border:none;
+    color:var(--muted);font-size:.88rem;font-weight:600;
+    cursor:pointer;position:relative;transition:color .2s;
+    font-family:'Inter',sans-serif;letter-spacing:.01em;
+  }
+  .tab-btn::after{
+    content:'';position:absolute;bottom:-2px;left:0;right:0;
+    height:2px;background:var(--accent);border-radius:2px;
+    transform:scaleX(0);transition:transform .2s;
+  }
+  .tab-btn.active{color:var(--text)}
+  .tab-btn.active::after{transform:scaleX(1)}
+  .tab-btn:hover{color:var(--text)}
+  .tab-panel{display:none}
+  .tab-panel.active{display:block}
+
+  /* ── Hall of Shame ── */
+  .shame-table{width:100%;border-collapse:collapse;font-size:.82rem}
+  .shame-table th{
+    text-align:left;padding:10px 14px;font-size:.7rem;font-weight:600;
+    color:var(--muted);text-transform:uppercase;letter-spacing:.07em;
+    border-bottom:1px solid var(--border);
+  }
+  .shame-table td{padding:11px 14px;border-bottom:1px solid rgba(37,42,56,.6)}
+  .shame-table tr:hover td{background:rgba(255,255,255,.02)}
+  .shame-repo{font-weight:600;font-family:'JetBrains Mono',monospace;font-size:.8rem}
+  .shame-stars{color:var(--yellow);font-size:.78rem}
+  .shame-score-bar{
+    width:80px;height:6px;background:var(--surface2);border-radius:3px;overflow:hidden;display:inline-block;
+  }
+  .shame-score-fill{height:100%;border-radius:3px;transition:width .8s ease}
+  .shame-no-manifest{color:var(--muted);font-style:italic;font-size:.78rem}
+  .violation-chip{
+    display:inline-flex;align-items:center;gap:4px;
+    font-size:.68rem;font-weight:700;padding:2px 8px;
+    border-radius:6px;margin:1px;
+  }
+  .violation-chip.critical{background:#3d0f0f;color:#fca5a5;border:1px solid #7f1d1d}
+  .violation-chip.high{background:#3d1f0a;color:#fdba74;border:1px solid #7c2d12}
+  .violation-chip.medium{background:#3d350a;color:#fde68a;border:1px solid #78350f}
+  .violation-chip.none{background:#0d1f19;color:var(--green);border:1px solid #14532d}
+
+  /* ── Leaderboard ── */
+  .lb-tabs{display:flex;gap:8px;margin-bottom:20px;flex-wrap:wrap}
+  .lb-tab-btn{
+    padding:6px 16px;border-radius:20px;font-size:.75rem;font-weight:600;
+    border:1px solid var(--border);background:var(--surface2);color:var(--muted);
+    cursor:pointer;transition:all .15s;
+  }
+  .lb-tab-btn.active{background:var(--accent);color:#fff;border-color:var(--accent)}
+  .lb-table{width:100%;border-collapse:collapse;font-size:.83rem}
+  .lb-table th{
+    text-align:left;padding:10px 14px;font-size:.7rem;font-weight:600;
+    color:var(--muted);text-transform:uppercase;letter-spacing:.07em;
+    border-bottom:1px solid var(--border);
+  }
+  .lb-table td{padding:11px 14px;border-bottom:1px solid rgba(37,42,56,.6)}
+  .lb-table tr:hover td{background:rgba(255,255,255,.02)}
+  .rank-badge{
+    width:24px;height:24px;border-radius:50%;display:inline-flex;
+    align-items:center;justify-content:center;font-size:.72rem;font-weight:700;
+  }
+  .rank-1{background:linear-gradient(135deg,#f59e0b,#d97706);color:#000}
+  .rank-2{background:linear-gradient(135deg,#9ca3af,#6b7280);color:#000}
+  .rank-3{background:linear-gradient(135deg,#b45309,#92400e);color:#fff}
+  .rank-n{background:var(--surface2);color:var(--muted)}
+  .lb-score-bar{
+    width:100px;height:6px;background:var(--surface2);border-radius:3px;
+    overflow:hidden;display:inline-block;vertical-align:middle;margin-left:8px;
+  }
+  .lb-score-fill{height:100%;border-radius:3px;
+    background:linear-gradient(90deg,var(--accent),var(--accent2));transition:width .8s ease}
+  .poll-tag{
+    font-size:.7rem;color:var(--muted);margin-left:auto;
+    display:flex;align-items:center;gap:6px;
+  }
+  .poll-dot{
+    width:6px;height:6px;border-radius:50%;background:var(--green);
+    animation:pulse 2s ease infinite;
+  }
 </style>
 </head>
 <body>
@@ -251,6 +372,13 @@
   <span id="header-tag">Real Data · Real Scanning · <span style="color:var(--ai-purple)">✦ AI Brain</span></span>
 </header>
 
+<div class="tab-bar">
+  <button class="tab-btn active" id="tab-scanner"   onclick="switchTab('scanner')">🔍 Scanner</button>
+  <button class="tab-btn"        id="tab-leaderboard" onclick="switchTab('leaderboard')">🏆 Leaderboard</button>
+  <button class="tab-btn"        id="tab-shame"     onclick="switchTab('shame')">😤 Hall of Shame</button>
+</div>
+
+<div class="tab-panel active" id="panel-scanner">
 <div class="scan-bar">
   <label for="gh-url">GitHub Repository URL</label>
   <div class="input-row">
@@ -312,6 +440,44 @@
     Works with npm (package.json) and Python (requirements.txt) repos.</p>
   </div>
 </main>
+</div><!-- /panel-scanner -->
+
+<!-- ── LEADERBOARD TAB ── -->
+<div class="tab-panel" id="panel-leaderboard">
+<main>
+  <div class="card">
+    <div style="display:flex;align-items:center;margin-bottom:20px">
+      <div class="card-title" style="margin:0">Top Agents by Task</div>
+      <div class="poll-tag"><div class="poll-dot"></div>Live · refreshes every 15s</div>
+    </div>
+    <div class="lb-tabs" id="lb-task-tabs"></div>
+    <div id="lb-table-wrap"></div>
+    <div id="lb-empty" style="text-align:center;padding:40px;color:var(--muted);font-size:.85rem;display:none">
+      No completed sessions yet. Run an agent or execute <code>python scripts/seed_leaderboard.py</code>.
+    </div>
+  </div>
+</main>
+</div><!-- /panel-leaderboard -->
+
+<!-- ── HALL OF SHAME TAB ── -->
+<div class="tab-panel" id="panel-shame">
+<main>
+  <div class="card">
+    <div style="display:flex;align-items:center;gap:12px;margin-bottom:20px">
+      <div>
+        <div class="card-title" style="margin:0">Hall of Shame</div>
+        <div style="font-size:.78rem;color:var(--muted);margin-top:4px">Pre-scanned license findings across 10 famous open-source repos</div>
+      </div>
+      <span style="margin-left:auto;font-size:.72rem;padding:4px 10px;border-radius:20px;background:var(--surface2);border:1px solid var(--border);color:var(--muted)">
+        📅 Last scanned May 6 2026
+      </span>
+    </div>
+    <div id="shame-table-wrap">
+      <div style="text-align:center;padding:40px;color:var(--muted)">Loading…</div>
+    </div>
+  </div>
+</main>
+</div><!-- /panel-shame -->
 
 <script>
 const API_BASE = '';   // same origin
@@ -588,6 +754,168 @@ function renderResults(data) {
 document.getElementById('gh-url').addEventListener('keydown', e => {
   if (e.key === 'Enter') runScan();
 });
+
+// ── Tab system ──────────────────────────────────────────────────────────────
+const TABS = ['scanner', 'leaderboard', 'shame'];
+let _lbTimer = null;
+let _lbActiveTask = null;
+let _lbData = {};
+let _shameLoaded = false;
+
+function switchTab(name) {
+  TABS.forEach(t => {
+    document.getElementById('tab-' + t).classList.toggle('active', t === name);
+    document.getElementById('panel-' + t).classList.toggle('active', t === name);
+  });
+  if (name === 'leaderboard') {
+    loadLeaderboard();
+    if (!_lbTimer) _lbTimer = setInterval(loadLeaderboard, 15000);
+  } else {
+    if (_lbTimer) { clearInterval(_lbTimer); _lbTimer = null; }
+  }
+  if (name === 'shame' && !_shameLoaded) loadShame();
+}
+
+// ── Leaderboard ─────────────────────────────────────────────────────────────
+const TASK_LABELS = {
+  classify_licenses:          '🔍 Classify Licenses',
+  detect_conflicts:           '⚠ Detect Conflicts',
+  generate_compliance_report: '📋 Compliance Report',
+};
+
+async function loadLeaderboard() {
+  try {
+    const resp = await fetch(`${API_BASE}/leaderboard`);
+    if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+    _lbData = await resp.json();
+    renderLeaderboard();
+  } catch(e) {
+    document.getElementById('lb-table-wrap').innerHTML =
+      `<div style="text-align:center;padding:24px;color:var(--muted);font-size:.85rem">⚠ Could not load leaderboard: ${esc(e.message)}</div>`;
+  }
+}
+
+function renderLeaderboard() {
+  const tasks = Object.keys(_lbData);
+  const tabsEl = document.getElementById('lb-task-tabs');
+  const wrapEl = document.getElementById('lb-table-wrap');
+  const emptyEl = document.getElementById('lb-empty');
+
+  if (!tasks.length) {
+    tabsEl.innerHTML = '';
+    wrapEl.innerHTML = '';
+    emptyEl.style.display = 'block';
+    return;
+  }
+  emptyEl.style.display = 'none';
+
+  if (!_lbActiveTask || !_lbData[_lbActiveTask]) _lbActiveTask = tasks[0];
+
+  tabsEl.innerHTML = tasks.map(t => `
+    <button class="lb-tab-btn ${t === _lbActiveTask ? 'active' : ''}"
+            onclick="lbSwitchTask('${t}')">${TASK_LABELS[t] || t}</button>
+  `).join('');
+
+  const rows = _lbData[_lbActiveTask] || [];
+  wrapEl.innerHTML = `
+    <table class="lb-table">
+      <thead><tr>
+        <th>Rank</th><th>Agent</th><th>Best Score</th><th>Runs</th><th>Last Run</th>
+      </tr></thead>
+      <tbody>
+        ${rows.map(r => {
+          const rankCls = r.rank <= 3 ? `rank-${r.rank}` : 'rank-n';
+          const pct = (r.score * 100).toFixed(1);
+          const dt = r.last_run ? new Date(r.last_run).toLocaleString() : '—';
+          return `<tr>
+            <td><span class="rank-badge ${rankCls}">${r.rank}</span></td>
+            <td style="font-weight:600">${esc(r.agent_name)}</td>
+            <td>
+              <span style="font-weight:700;font-size:.9rem">${pct}%</span>
+              <span class="lb-score-bar"><span class="lb-score-fill" style="width:${pct}%"></span></span>
+            </td>
+            <td style="color:var(--muted)">${r.runs}</td>
+            <td style="color:var(--muted);font-size:.78rem">${dt}</td>
+          </tr>`;
+        }).join('')}
+      </tbody>
+    </table>`;
+}
+
+function lbSwitchTask(t) {
+  _lbActiveTask = t;
+  renderLeaderboard();
+}
+
+// ── Hall of Shame ────────────────────────────────────────────────────────────
+const SEV_ORDER = { critical: 0, high: 1, medium: 2, low: 3, none: 4 };
+
+async function loadShame() {
+  _shameLoaded = true;
+  try {
+    const resp = await fetch(`${API_BASE}/hall-of-shame`);
+    if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+    const data = await resp.json();
+    renderShame(data);
+  } catch(e) {
+    document.getElementById('shame-table-wrap').innerHTML =
+      `<div style="text-align:center;padding:24px;color:var(--muted)">⚠ ${esc(e.message)}</div>`;
+  }
+}
+
+function shameChip(sev, count) {
+  if (!sev || sev === 'none') return `<span class="violation-chip none">✓ Clean</span>`;
+  const labels = { critical:'🔴 Critical', high:'🟠 High', medium:'🟡 Medium', low:'🟢 Low' };
+  return `<span class="violation-chip ${sev}">${labels[sev] || sev} ×${count}</span>`;
+}
+
+function renderShame(data) {
+  // Sort: most violations first, then by severity
+  const sorted = [...data].sort((a,b) => {
+    const sd = (SEV_ORDER[a.worst_severity]??5) - (SEV_ORDER[b.worst_severity]??5);
+    return sd || b.violation_count - a.violation_count;
+  });
+
+  const rows = sorted.map(r => {
+    const stars = r.stars >= 1000 ? (r.stars/1000).toFixed(0) + 'k' : r.stars;
+    const noManifest = !r.manifest_type;
+    const scoreBar = r.grader_score != null
+      ? `<div class="shame-score-bar"><div class="shame-score-fill"
+           style="width:${(r.grader_score*100).toFixed(0)}%;background:${r.grader_score>0.8?'var(--green)':r.grader_score>0.6?'var(--yellow)':'var(--red)'}"></div></div>
+         <span style="margin-left:6px;font-size:.78rem">${(r.grader_score*100).toFixed(0)}%</span>`
+      : `<span style="color:var(--muted);font-size:.78rem">—</span>`;
+    const violations = noManifest
+      ? `<span class="shame-no-manifest">No manifest</span>`
+      : shameChip(r.worst_severity, r.violation_count);
+    const topPkg = (r.top_violations || []).map(v =>
+      `<div style="font-size:.72rem;color:var(--muted);margin-top:2px">
+         <span style="font-family:'JetBrains Mono',monospace;color:var(--accent2)">${esc(v.package)}</span>
+         <span style="margin:0 4px">·</span>${esc(v.license)}
+       </div>`
+    ).join('');
+    const aiNote = r.ai_resolved_count
+      ? `<span class="ai-badge" style="margin-left:6px">✦ ${r.ai_resolved_count} AI</span>` : '';
+
+    return `<tr>
+      <td>
+        <a href="${esc(r.repo_url)}" target="_blank" class="shame-repo"
+           style="color:var(--accent2);text-decoration:none">${esc(r.repo_name)}</a>${aiNote}
+      </td>
+      <td class="shame-stars">⭐ ${stars}</td>
+      <td>${violations}${topPkg}</td>
+      <td>${scoreBar}</td>
+    </tr>`;
+  }).join('');
+
+  document.getElementById('shame-table-wrap').innerHTML = `
+    <table class="shame-table">
+      <thead><tr>
+        <th>Repository</th><th>Stars</th><th>Violations</th><th>Grader Score</th>
+      </tr></thead>
+      <tbody>${rows}</tbody>
+    </table>`;
+}
 </script>
 </body>
 </html>
+
